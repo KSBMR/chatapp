@@ -10,7 +10,9 @@ SECRET_KEY = 'django-insecure-change-this-in-production-use-env-variable'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = ['*']
+DEBUG = False
+ALLOWED_HOSTS = ['yourusername.pythonanywhere.com']
 
 # Application definition
 INSTALLED_APPS = [
