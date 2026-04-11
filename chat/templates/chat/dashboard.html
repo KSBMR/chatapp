@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Django Chat</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ══════════════════════════════════
+       SIDEBAR — User list
+  ══════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Header -->
+    <div class="sidebar-header">
+      <div class="sidebar-top">
+        <div class="app-brand">
+          DjangoChat <span class="brand-dot"></span>
+        </div>
+        <div class="header-actions">
+          <a href="{% url 'profile' %}" class="icon-btn" title="Profile">👤</a>
+          <a href="{% url 'logout' %}" class="icon-btn" title="Logout">🚪</a>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          id="sidebar-search"
+          placeholder="Search users…"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <!-- Current User Strip -->
+    <div class="current-user-strip">
+      <div class="avatar" style="background: {{ current_profile.avatar_color }}">
+        {{ current_user.username|first|upper }}
+      </div>
+      <div class="user-info">
+        <div class="username">{{ current_user.username }}</div>
+        <div class="status">● Online</div>
+      </div>
+    </div>
+
+    <!-- Users Label -->
+    <div class="users-label">All Users ({{ user_list|length }})</div>
+
+    <!-- User List -->
+    <div class="user-list">
+      {% for item in user_list %}
+        <a href="{% url 'chat' item.user.username %}" class="user-item">
+          <div class="avatar-wrap">
+            <div class="avatar" style="background: {{ item.profile.avatar_color }}">
+              {{ item.user.username|first|upper }}
+            </div>
+            {% if item.profile.is_online %}
+              <span class="online-dot"></span>
+            {% endif %}
+          </div>
+
+          <div class="user-meta">
+            <div class="user-name">{{ item.user.username }}</div>
+            <div class="user-preview">
+              {% if item.last_message %}
+                {% if item.last_message.sender == current_user %}You: {% endif %}
+                {{ item.last_message.message|truncatechars:35 }}
+              {% else %}
+                Start a conversation
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            {% if item.last_message %}
+              <span class="user-time">{{ item.last_message.timestamp|time:"H:i" }}</span>
+            {% endif %}
+            {% if item.unread_count > 0 %}
+              <span class="unread-badge">{{ item.unread_count }}</span>
+            {% endif %}
+          </div>
+        </a>
+      {% empty %}
+        <div style="padding:24px 20px; text-align:center; color:var(--text-muted); font-size:13px;">
+          No other users yet.<br/>Share the app to get started!
+        </div>
+      {% endfor %}
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════
+       MAIN — Empty / Welcome state
+  ══════════════════════════════════ -->
+  <main class="main-content">
+    <div class="empty-state">
+      <div class="empty-icon">💬</div>
+      <h2>Your messages</h2>
+      <p>Select a user from the sidebar to start a real-time conversation.</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // Sidebar search (inline for dashboard page)
+  const searchInput = document.getElementById("sidebar-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", function () {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".user-item").forEach(item => {
+        const name = item.querySelector(".user-name")?.textContent.toLowerCase() || "";
+        item.style.display = name.includes(q) ? "flex" : "none";
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
