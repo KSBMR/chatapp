@@ -12,7 +12,7 @@ DEBUG = True
 
 # ALLOWED_HOSTS = ['*']
 DEBUG = False
-ALLOWED_HOSTS = ['yourusername.pythonanywhere.com']
+ALLOWED_HOSTS = ['KSBMR.pythonanywhere.com']
 
 # Application definition
 INSTALLED_APPS = [
