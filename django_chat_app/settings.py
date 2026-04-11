@@ -17,7 +17,7 @@ ALLOWED_HOSTS = ['yourusername.pythonanywhere.com']
 # Application definition
 INSTALLED_APPS = [
     # Daphne must be first to handle ASGI properly
-    'daphne',
+    # 'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Django Channels
-    'channels',
+    # 'channels',
     # Our chat app
     'chat',
 ]
@@ -59,7 +59,9 @@ TEMPLATES = [
 ]
 
 # ASGI application - used by Daphne for WebSocket support
-ASGI_APPLICATION = 'django_chat_app.asgi.application'
+# ASGI_APPLICATION = 'django_chat_app.asgi.application'
+
+WSGI_APPLICATION = 'django_chat_app.wsgi.application'
 
 # Channel layers configuration
 # Using InMemoryChannelLayer for development (no Redis needed)
