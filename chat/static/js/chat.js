@@ -226,3 +226,18 @@
   scrollToBottom(false); // Jump to bottom on page load without animation
 
 })();
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Check if we are on a mobile screen
+    if (window.innerWidth <= 768) {
+        // Look at the URL. If it contains a username (meaning we aren't on the dashboard/list only), 
+        // we add the 'chat-open' class to the body.
+        const path = window.location.pathname;
+        
+        // Adjust this condition based on your URL structure (e.g., if it's /chat/username/)
+        if (path.includes('/chat/')) { 
+            document.body.classList.add('chat-open');
+        }
+    }
+});

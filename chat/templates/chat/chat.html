@@ -118,6 +118,7 @@
 
     <!-- Chat Header -->
     <div class="chat-header">
+      <a href="{% url 'dashboard' %}" class="mobile-back-btn icon-btn">⬅</a>
       <div class="avatar-wrap">
         <div class="avatar" style="background: {{ other_profile.avatar_color }}; width:40px; height:40px; font-size:15px;">
           {{ other_user.username|first|upper }}

@@ -853,3 +853,37 @@ input, textarea { font-family: inherit; outline: none; border: none; }
     width: 100%;
   }
 }
+
+
+.mobile-back-btn {
+  display: none;
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .mobile-back-btn {
+    display: block;
+  }
+}
+
+/* Mobile Logic */
+@media (max-width: 768px) {
+  /* Hide the main chat content by default on mobile */
+  .main-content {
+    display: none;
+    width: 100%;
+  }
+
+  /* When the body has the 'chat-open' class, show chat and hide sidebar */
+  body.chat-open .main-content {
+    display: flex;
+  }
+  body.chat-open .sidebar {
+    display: none;
+  }
+
+  .sidebar {
+    width: 100%; /* Sidebar takes full width on mobile list view */
+  }
+}
