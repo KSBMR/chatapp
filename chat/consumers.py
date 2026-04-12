@@ -49,6 +49,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if not self.scope['user'].is_authenticated:
             await self.close()
             return
+        
+        # 1. Join their OWN private group for global notifications
+        self.user_group_name = f"user_{self.sender_username}"
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
 
         # Join the chat room group
         await self.channel_layer.group_add(
@@ -129,6 +136,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'sender': self.sender_username,
                 'timestamp': saved_message['timestamp'],
                 'message_id': saved_message['id'],
+            }
+        )
+
+        await self.channel_layer.group_send(
+            f"user_{self.receiver_username}",
+            {
+                'type': 'sidebar_update',
+                'sender': self.sender_username,
+                'message': message_text,
             }
         )
 

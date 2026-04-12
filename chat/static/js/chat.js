@@ -37,8 +37,10 @@
 
   // ── WebSocket Connection ───────────────────────────────────────────────────
   // URL: ws://localhost:8000/ws/chat/<receiver_username>/
-  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsUrl    = `${wsScheme}://${window.location.host}/ws/chat/${receiverUser}/`;
+  // const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+  // const wsUrl = `${wsScheme}://${window.location.host}/ws/chat/${receiverUser}/`;
+
+  const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
 
   let socket = null;
   let reconnectTimer = null;
@@ -72,7 +74,23 @@
         });
         scrollToBottom();
 
-      } else if (data.type === "user_status") {
+      } 
+      
+      else if (data.type === "sidebar_update") {
+        // 1. Find the sidebar item for this sender
+        const userItem = document.querySelector(`.user-item[href*="${data.sender}"]`);
+        if (userItem) {
+            // 2. Update the preview text
+            const preview = userItem.querySelector(".user-preview");
+            if (preview) preview.textContent = data.message;
+            
+            // 3. Optional: Move to top of list
+            const userList = document.querySelector(".user-list");
+            userList.prepend(userItem);
+        }
+    }
+      
+      else if (data.type === "user_status") {
         // The other user went online/offline
         if (data.username === receiverUser) {
           setStatus(data.is_online ? "online" : "offline");

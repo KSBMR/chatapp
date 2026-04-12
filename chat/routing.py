@@ -9,7 +9,6 @@ from django.urls import re_path
 from . import consumers
 
 websocket_urlpatterns = [
-    # When the frontend connects to ws://.../ws/chat/john/,
-    # it's routed to ChatConsumer with username='john'
+    # Make sure this matches the path in your chat.js wsUrl
     re_path(r'ws/chat/(?P<username>\w+)/$', consumers.ChatConsumer.as_asgi()),
 ]
