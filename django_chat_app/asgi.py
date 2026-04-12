@@ -21,3 +21,19 @@ application = ProtocolTypeRouter({
         )
     ),
 })
+
+# --- Add this at the very bottom ---
+from django.contrib.auth import get_user_model
+
+def create_admin():
+    User = get_user_model()
+    # Change 'admin' and 'password123' to what you want
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser('adil', 'admin@example.com', 'password123')
+        print("Admin user created successfully!")
+
+# Run the function
+try:
+    create_admin()
+except Exception as e:
+    print(f"Admin creation skipped: {e}")
