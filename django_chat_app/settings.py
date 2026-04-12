@@ -22,7 +22,7 @@ DEBUG = False
 # Application definition
 INSTALLED_APPS = [
     # Daphne must be first to handle ASGI properly
-    # 'daphne',
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Django Channels
-    # 'channels',
+    'channels',
     # Our chat app
     'chat',
 ]
