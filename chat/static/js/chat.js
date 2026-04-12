@@ -227,7 +227,36 @@
 
 })();
 
+// Session Storage
 
+// 1. Save text before the page reloads
+window.onbeforeunload = function() {
+    const messageInput = document.getElementById('message-input');
+    if (messageInput && messageInput.value) {
+        sessionStorage.setItem('saved_message', messageInput.value);
+    }
+};
+
+// 2. Restore text after the page loads
+document.addEventListener("DOMContentLoaded", function() {
+    const savedMessage = sessionStorage.getItem('saved_message');
+    const messageInput = document.getElementById('message-input');
+    
+    if (savedMessage && messageInput) {
+        messageInput.value = savedMessage;
+        sessionStorage.removeItem('saved_message'); // Clear it so it doesn't stay forever
+    }
+
+    // 3. Set the 10-second reload timer
+    setTimeout(function() {
+        // Only reload if the user isn't actively typing (to be polite)
+        // Or just force it:
+        location.reload();
+    }, 10000); 
+});
+
+
+// chat reload
 document.addEventListener("DOMContentLoaded", function() {
     // Check if we are on a mobile screen
     if (window.innerWidth <= 768) {
