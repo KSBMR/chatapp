@@ -14,6 +14,11 @@ ALLOWED_HOSTS = ['*']
 DEBUG = False
 ALLOWED_HOSTS = ['my-django-chat.onrender.com', 'localhost', '127.0.0.1']
 
+# Add this below your ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = [
+    'https://my-django-chat.onrender.com',
+]
+
 # Application definition
 INSTALLED_APPS = [
     # Daphne must be first to handle ASGI properly
