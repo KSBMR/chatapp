@@ -12,7 +12,12 @@ DEBUG = True
 
 # ALLOWED_HOSTS = ['*']
 DEBUG = False
-ALLOWED_HOSTS = ['KSBMR.pythonanywhere.com']
+ALLOWED_HOSTS = [
+    'chatingapp.pythonanywhere.com',  # Your new live site
+    'KSBMR.pythonanywhere.com',       # Your old site (if still active)
+    '127.0.0.1',                      # Localhost (for your PC)
+    'localhost',                      # Localhost (for your PC)
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -95,7 +100,7 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

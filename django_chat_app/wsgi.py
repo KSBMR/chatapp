@@ -1,7 +1,7 @@
 import os
 import sys
 
-path = '/home/KSBMR/chatapp'
+path = '/home/chatingapp/chatapp'
 if path not in sys.path:
     sys.path.append(path)
 
