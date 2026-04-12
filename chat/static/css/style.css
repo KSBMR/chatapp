@@ -854,18 +854,44 @@ input, textarea { font-family: inherit; outline: none; border: none; }
   }
 }
 
-
+ /* back button -start*/
+/* Base style - Hidden by default */
 .mobile-back-btn {
   display: none;
-  margin-right: 10px;
-  font-size: 20px;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.1); /* Subtle dark-mode friendly bg */
+  color: #ffffff;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-right: 12px;
 }
 
+/* Hover/Active states */
+.mobile-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(-2px); /* Subtle nudge effect */
+}
+
+.mobile-back-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-back-btn .icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Mobile Viewport */
 @media (max-width: 768px) {
   .mobile-back-btn {
-    display: block;
+    display: inline-flex; /* flex ensures icon is perfectly centered */
   }
 }
+/* back button -end*/
 
 /* Mobile Logic */
 @media (max-width: 768px) {
