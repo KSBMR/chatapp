@@ -12,12 +12,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 DEBUG = False
-# ALLOWED_HOSTS = [
-#     # 'chatingapp.pythonanywhere.com',  # Your new live site
-#     # 'KSBMR.pythonanywhere.com',       # Your old site (if still active)
-#     '127.0.0.1',                      # Localhost (for your PC)
-#     'localhost',                      # Localhost (for your PC)
-# ]
+ALLOWED_HOSTS = ['my-django-chat.onrender.com', 'localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -36,6 +31,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -64,7 +60,7 @@ TEMPLATES = [
 ]
 
 # ASGI application - used by Daphne for WebSocket support
-# ASGI_APPLICATION = 'django_chat_app.asgi.application'
+ASGI_APPLICATION = 'django_chat_app.asgi.application'
 
 WSGI_APPLICATION = 'django_chat_app.wsgi.application'
 
