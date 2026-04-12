@@ -111,3 +111,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+# This helps WhiteNoise find your files and compress them
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
