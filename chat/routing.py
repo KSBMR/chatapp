@@ -10,5 +10,5 @@ from . import consumers
 
 websocket_urlpatterns = [
     # Make sure this matches the path in your chat.js wsUrl
-    re_path(r'ws/chat/(?P<username>\w+)/$', consumers.ChatConsumer.as_async()),
+    re_path(r'ws/chat/(?P<username>\w+)/$', consumers.ChatConsumer.as_asgi()),
 ]
