@@ -1,3 +1,213 @@
+(function () {
+    "use strict";
+
+    // ── Configuration & DOM References ──────────────────────────────────────
+    const chatApp = document.getElementById("chat-app");
+    if (!chatApp) return; 
+
+    const currentUser    = chatApp.dataset.currentUser;
+    const receiverUser   = chatApp.dataset.receiverUser;
+    const receiverColor  = chatApp.dataset.receiverColor || "#6366f1";
+    const currentColor   = chatApp.dataset.currentColor  || "#10b981";
+
+    const messagesArea    = document.getElementById("messages-area");
+    const messageInput    = document.getElementById("message-input");
+    const sendBtn         = document.getElementById("send-btn");
+    const statusText      = document.getElementById("status-text");
+    const statusDot       = document.getElementById("status-dot");
+    const connectionToast = document.getElementById("connection-toast");
+    const toastText        = document.getElementById("toast-text");
+    const toastDot         = document.getElementById("toast-dot");
+
+    // ── WebSocket Logic ─────────────────────────────────────────────────────
+    const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
+    let socket = null;
+    let reconnectTimer = null;
+    let reconnectAttempts = 0;
+
+    function connect() {
+        showToast("connecting", "Connecting…");
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = function () {
+            console.log("[WS] Connected");
+            reconnectAttempts = 0;
+            showToast("connected", "Connected");
+            setTimeout(hideToast, 2000);
+            setStatus("online");
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            // 1. Handle New Chat Messages (Bubbles)
+            if (data.type === "chat_message") {
+                appendMessage({
+                    text: data.message,
+                    sender: data.sender,
+                    timestamp: data.timestamp,
+                    isSent: data.sender === currentUser,
+                });
+                scrollToBottom();
+            } 
+            
+            // 2. Handle Real-time Sidebar Updates
+            else if (data.type === "sidebar_update") {
+                // Find the user link in the sidebar
+                const userItem = document.querySelector(`.user-item[href*="${data.sender}"]`);
+                const userList = document.querySelector(".user-list") || document.querySelector(".conversations-list");
+
+                if (userItem && userList) {
+                    // Update preview text (last-message-preview or user-preview)
+                    const preview = userItem.querySelector(".user-preview") || userItem.querySelector(".last-message-preview");
+                    if (preview) {
+                        preview.textContent = (data.sender === currentUser ? "You: " : "") + data.message;
+                    }
+
+                    // Move this user to the top of the conversation list
+                    userList.prepend(userItem);
+                }
+            } 
+            
+            // 3. Handle Online Status Updates
+            else if (data.type === "user_status" && data.username === receiverUser) {
+                setStatus(data.is_online ? "online" : "offline");
+            }
+        };
+
+        socket.onclose = function () {
+            console.log("[WS] Disconnected");
+            showToast("disconnected", "Disconnected — reconnecting…");
+            setStatus("offline");
+            scheduleReconnect();
+        };
+
+        socket.onerror = function(err) {
+            console.error("[WS] Error: ", err);
+            socket.close();
+        };
+    }
+
+    function scheduleReconnect() {
+        clearTimeout(reconnectTimer);
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+        reconnectAttempts++;
+        reconnectTimer = setTimeout(connect, delay);
+    }
+
+    // ── Messaging Functions ─────────────────────────────────────────────────
+    function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+        socket.send(JSON.stringify({ message: text }));
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+        messageInput.focus();
+    }
+
+    // ── Workarounds & UI Initialization ─────────────────────────────────────
+    
+    function initializeUI() {
+        // Restore typed text after a manual reload
+        const savedMessage = sessionStorage.getItem('saved_message');
+        if (savedMessage && messageInput) {
+            messageInput.value = savedMessage;
+            sessionStorage.removeItem('saved_message');
+        }
+
+        // Mobile View: Toggle active chat class
+        if (window.innerWidth <= 768 && window.location.pathname.includes('/chat/')) {
+            document.body.classList.add('chat-open');
+        }
+        
+        // Removed PythonAnywhere auto-reload timer as Render handles sockets natively.
+    }
+
+    window.onbeforeunload = function() {
+        if (messageInput && messageInput.value) {
+            sessionStorage.setItem('saved_message', messageInput.value);
+        }
+    };
+
+    // ── UI Helpers ────────────────────────────────────────────────────────────
+    function appendMessage({ text, sender, timestamp, isSent }) {
+        const row = document.createElement("div");
+        row.className = `message-row ${isSent ? "sent" : "received"}`;
+        const color = isSent ? currentColor : receiverColor;
+        row.innerHTML = `
+            <div class="msg-avatar" style="background:${color}">${sender.charAt(0).toUpperCase()}</div>
+            <div>
+                <div class="message-bubble">${escapeHtml(text)}</div>
+                <div class="msg-time">${timestamp}</div>
+            </div>`;
+        messagesArea.appendChild(row);
+    }
+
+    function scrollToBottom(smooth = true) {
+        messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    }
+
+    function setStatus(status) {
+        if (!statusText) return;
+        statusText.textContent = status === "online" ? "Online" : "Offline";
+        statusText.className = `status ${status === "online" ? "online" : ""}`;
+        if (statusDot) statusDot.style.display = status === "online" ? "block" : "none";
+    }
+
+    function showToast(type, message) {
+        if (!connectionToast) return;
+        toastDot.className = `toast-dot ${type}`;
+        toastText.textContent = message;
+        connectionToast.style.display = "flex";
+        connectionToast.style.opacity = "1";
+    }
+
+    function hideToast() {
+        if (connectionToast) {
+            connectionToast.style.opacity = "0";
+            setTimeout(() => { connectionToast.style.display = "none"; }, 300);
+        }
+    }
+
+    function escapeHtml(text) {
+        const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // ── Event Listeners ──────────────────────────────────────────────────────
+    sendBtn.addEventListener("click", sendMessage);
+
+    messageInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    messageInput.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 120) + "px";
+    });
+
+    const searchInput = document.getElementById("sidebar-search");
+    if (searchInput) {
+        searchInput.addEventListener("input", function () {
+            const q = this.value.toLowerCase();
+            document.querySelectorAll(".user-item").forEach(item => {
+                const name = item.querySelector(".user-name")?.textContent.toLowerCase() || "";
+                item.style.display = name.includes(q) ? "flex" : "none";
+            });
+        });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    connect();
+    initializeUI();
+    scrollToBottom(false);
+
+})();
+
+
 // /**
 //  * ════════════════════════════════════════════
 //  * Django Chat App — WebSocket Client
@@ -279,197 +489,197 @@
  * ════════════════════════════════════════════
  */
 
-(function () {
-    "use strict";
+// (function () {
+//     "use strict";
 
-    // ── Configuration & DOM References ──────────────────────────────────────
-    const chatApp = document.getElementById("chat-app");
-    if (!chatApp) return; 
+//     // ── Configuration & DOM References ──────────────────────────────────────
+//     const chatApp = document.getElementById("chat-app");
+//     if (!chatApp) return; 
 
-    const currentUser    = chatApp.dataset.currentUser;
-    const receiverUser   = chatApp.dataset.receiverUser;
-    const receiverColor  = chatApp.dataset.receiverColor || "#6366f1";
-    const currentColor   = chatApp.dataset.currentColor  || "#10b981";
+//     const currentUser    = chatApp.dataset.currentUser;
+//     const receiverUser   = chatApp.dataset.receiverUser;
+//     const receiverColor  = chatApp.dataset.receiverColor || "#6366f1";
+//     const currentColor   = chatApp.dataset.currentColor  || "#10b981";
 
-    const messagesArea    = document.getElementById("messages-area");
-    const messageInput    = document.getElementById("message-input");
-    const sendBtn         = document.getElementById("send-btn");
-    const statusText      = document.getElementById("status-text");
-    const statusDot       = document.getElementById("status-dot");
-    const connectionToast = document.getElementById("connection-toast");
-    const toastText       = document.getElementById("toast-text");
-    const toastDot        = document.getElementById("toast-dot");
+//     const messagesArea    = document.getElementById("messages-area");
+//     const messageInput    = document.getElementById("message-input");
+//     const sendBtn         = document.getElementById("send-btn");
+//     const statusText      = document.getElementById("status-text");
+//     const statusDot       = document.getElementById("status-dot");
+//     const connectionToast = document.getElementById("connection-toast");
+//     const toastText       = document.getElementById("toast-text");
+//     const toastDot        = document.getElementById("toast-dot");
 
-    // ── WebSocket Logic ─────────────────────────────────────────────────────
-    const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
-    let socket = null;
-    let reconnectTimer = null;
-    let reconnectAttempts = 0;
+//     // ── WebSocket Logic ─────────────────────────────────────────────────────
+//     const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
+//     let socket = null;
+//     let reconnectTimer = null;
+//     let reconnectAttempts = 0;
 
-    function connect() {
-        showToast("connecting", "Connecting…");
-        socket = new WebSocket(wsUrl);
+//     function connect() {
+//         showToast("connecting", "Connecting…");
+//         socket = new WebSocket(wsUrl);
 
-        socket.onopen = function () {
-            console.log("[WS] Connected");
-            reconnectAttempts = 0;
-            showToast("connected", "Connected");
-            setTimeout(hideToast, 2000);
-            setStatus("online");
-        };
+//         socket.onopen = function () {
+//             console.log("[WS] Connected");
+//             reconnectAttempts = 0;
+//             showToast("connected", "Connected");
+//             setTimeout(hideToast, 2000);
+//             setStatus("online");
+//         };
 
-        socket.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            if (data.type === "chat_message") {
-                appendMessage({
-                    text: data.message,
-                    sender: data.sender,
-                    timestamp: data.timestamp,
-                    isSent: data.sender === currentUser,
-                });
-                scrollToBottom();
-            } else if (data.type === "sidebar_update") {
-                const userItem = document.querySelector(`.user-item[href*="${data.sender}"]`);
-                if (userItem) {
-                    const preview = userItem.querySelector(".user-preview");
-                    if (preview) preview.textContent = data.message;
-                    document.querySelector(".user-list").prepend(userItem);
-                }
-            } else if (data.type === "user_status" && data.username === receiverUser) {
-                setStatus(data.is_online ? "online" : "offline");
-            }
-        };
+//         socket.onmessage = function (event) {
+//             const data = JSON.parse(event.data);
+//             if (data.type === "chat_message") {
+//                 appendMessage({
+//                     text: data.message,
+//                     sender: data.sender,
+//                     timestamp: data.timestamp,
+//                     isSent: data.sender === currentUser,
+//                 });
+//                 scrollToBottom();
+//             } else if (data.type === "sidebar_update") {
+//                 const userItem = document.querySelector(`.user-item[href*="${data.sender}"]`);
+//                 if (userItem) {
+//                     const preview = userItem.querySelector(".user-preview");
+//                     if (preview) preview.textContent = data.message;
+//                     document.querySelector(".user-list").prepend(userItem);
+//                 }
+//             } else if (data.type === "user_status" && data.username === receiverUser) {
+//                 setStatus(data.is_online ? "online" : "offline");
+//             }
+//         };
 
-        socket.onclose = function () {
-            console.log("[WS] Disconnected");
-            showToast("disconnected", "Disconnected — reconnecting…");
-            setStatus("offline");
-            scheduleReconnect();
-        };
-    }
+//         socket.onclose = function () {
+//             console.log("[WS] Disconnected");
+//             showToast("disconnected", "Disconnected — reconnecting…");
+//             setStatus("offline");
+//             scheduleReconnect();
+//         };
+//     }
 
-    function scheduleReconnect() {
-        clearTimeout(reconnectTimer);
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-        reconnectAttempts++;
-        reconnectTimer = setTimeout(connect, delay);
-    }
+//     function scheduleReconnect() {
+//         clearTimeout(reconnectTimer);
+//         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+//         reconnectAttempts++;
+//         reconnectTimer = setTimeout(connect, delay);
+//     }
 
-    // ── Messaging Functions ─────────────────────────────────────────────────
-    function sendMessage() {
-        const text = messageInput.value.trim();
-        if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
-        socket.send(JSON.stringify({ message: text }));
-        messageInput.value = "";
-        messageInput.style.height = "auto";
-        messageInput.focus();
-    }
+//     // ── Messaging Functions ─────────────────────────────────────────────────
+//     function sendMessage() {
+//         const text = messageInput.value.trim();
+//         if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+//         socket.send(JSON.stringify({ message: text }));
+//         messageInput.value = "";
+//         messageInput.style.height = "auto";
+//         messageInput.focus();
+//     }
 
-    // ── Workarounds: Session Storage & Reload & Mobile View ──────────────────
+//     // ── Workarounds: Session Storage & Reload & Mobile View ──────────────────
     
-    function initializeWorkarounds() {
-        // 1. Restore typed text after a reload
-        const savedMessage = sessionStorage.getItem('saved_message');
-        if (savedMessage && messageInput) {
-            messageInput.value = savedMessage;
-            sessionStorage.removeItem('saved_message');
-        }
+//     function initializeWorkarounds() {
+//         // 1. Restore typed text after a reload
+//         const savedMessage = sessionStorage.getItem('saved_message');
+//         if (savedMessage && messageInput) {
+//             messageInput.value = savedMessage;
+//             sessionStorage.removeItem('saved_message');
+//         }
 
-        // 2. Mobile View: Toggle active chat class
-        if (window.innerWidth <= 768 && window.location.pathname.includes('/chat/')) {
-            document.body.classList.add('chat-open');
-        }
+//         // 2. Mobile View: Toggle active chat class
+//         if (window.innerWidth <= 768 && window.location.pathname.includes('/chat/')) {
+//             document.body.classList.add('chat-open');
+//         }
 
-        // 3. Auto-Reload Timer (PythonAnywhere Workaround)
-        // Only reloads if the WebSocket is NOT active
-        setTimeout(function() {
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                location.reload();
-            }
-        }, 10000); 
-    }
+//         // 3. Auto-Reload Timer (PythonAnywhere Workaround)
+//         // Only reloads if the WebSocket is NOT active
+//         setTimeout(function() {
+//             if (!socket || socket.readyState !== WebSocket.OPEN) {
+//                 location.reload();
+//             }
+//         }, 10000); 
+//     }
 
-    // Save text to memory before the page reloads
-    window.onbeforeunload = function() {
-        if (messageInput && messageInput.value) {
-            sessionStorage.setItem('saved_message', messageInput.value);
-        }
-    };
+//     // Save text to memory before the page reloads
+//     window.onbeforeunload = function() {
+//         if (messageInput && messageInput.value) {
+//             sessionStorage.setItem('saved_message', messageInput.value);
+//         }
+//     };
 
-    // ── UI Helpers ────────────────────────────────────────────────────────────
-    function appendMessage({ text, sender, timestamp, isSent }) {
-        const row = document.createElement("div");
-        row.className = `message-row ${isSent ? "sent" : "received"}`;
-        const color = isSent ? currentColor : receiverColor;
-        row.innerHTML = `
-            <div class="msg-avatar" style="background:${color}">${sender.charAt(0).toUpperCase()}</div>
-            <div>
-                <div class="message-bubble">${escapeHtml(text)}</div>
-                <div class="msg-time">${timestamp}</div>
-            </div>`;
-        messagesArea.appendChild(row);
-    }
+//     // ── UI Helpers ────────────────────────────────────────────────────────────
+//     function appendMessage({ text, sender, timestamp, isSent }) {
+//         const row = document.createElement("div");
+//         row.className = `message-row ${isSent ? "sent" : "received"}`;
+//         const color = isSent ? currentColor : receiverColor;
+//         row.innerHTML = `
+//             <div class="msg-avatar" style="background:${color}">${sender.charAt(0).toUpperCase()}</div>
+//             <div>
+//                 <div class="message-bubble">${escapeHtml(text)}</div>
+//                 <div class="msg-time">${timestamp}</div>
+//             </div>`;
+//         messagesArea.appendChild(row);
+//     }
 
-    function scrollToBottom(smooth = true) {
-        messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: smooth ? "smooth" : "auto" });
-    }
+//     function scrollToBottom(smooth = true) {
+//         messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+//     }
 
-    function setStatus(status) {
-        if (!statusText) return;
-        statusText.textContent = status === "online" ? "Online" : "Offline";
-        statusText.className = `status ${status === "online" ? "online" : ""}`;
-        if (statusDot) statusDot.style.display = status === "online" ? "block" : "none";
-    }
+//     function setStatus(status) {
+//         if (!statusText) return;
+//         statusText.textContent = status === "online" ? "Online" : "Offline";
+//         statusText.className = `status ${status === "online" ? "online" : ""}`;
+//         if (statusDot) statusDot.style.display = status === "online" ? "block" : "none";
+//     }
 
-    function showToast(type, message) {
-        if (!connectionToast) return;
-        toastDot.className = `toast-dot ${type}`;
-        toastText.textContent = message;
-        connectionToast.style.display = "flex";
-        connectionToast.style.opacity = "1";
-    }
+//     function showToast(type, message) {
+//         if (!connectionToast) return;
+//         toastDot.className = `toast-dot ${type}`;
+//         toastText.textContent = message;
+//         connectionToast.style.display = "flex";
+//         connectionToast.style.opacity = "1";
+//     }
 
-    function hideToast() {
-        if (connectionToast) {
-            connectionToast.style.opacity = "0";
-            setTimeout(() => { connectionToast.style.display = "none"; }, 300);
-        }
-    }
+//     function hideToast() {
+//         if (connectionToast) {
+//             connectionToast.style.opacity = "0";
+//             setTimeout(() => { connectionToast.style.display = "none"; }, 300);
+//         }
+//     }
 
-    function escapeHtml(text) {
-        const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
-        return text.replace(/[&<>"']/g, m => map[m]);
-    }
+//     function escapeHtml(text) {
+//         const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+//         return text.replace(/[&<>"']/g, m => map[m]);
+//     }
 
-    // ── Event Listeners ──────────────────────────────────────────────────────
-    sendBtn.addEventListener("click", sendMessage);
+//     // ── Event Listeners ──────────────────────────────────────────────────────
+//     sendBtn.addEventListener("click", sendMessage);
 
-    messageInput.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+//     messageInput.addEventListener("keydown", function (e) {
+//         if (e.key === "Enter" && !e.shiftKey) {
+//             e.preventDefault();
+//             sendMessage();
+//         }
+//     });
 
-    messageInput.addEventListener("input", function () {
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 120) + "px";
-    });
+//     messageInput.addEventListener("input", function () {
+//         this.style.height = "auto";
+//         this.style.height = Math.min(this.scrollHeight, 120) + "px";
+//     });
 
-    const searchInput = document.getElementById("sidebar-search");
-    if (searchInput) {
-        searchInput.addEventListener("input", function () {
-            const q = this.value.toLowerCase();
-            document.querySelectorAll(".user-item").forEach(item => {
-                const name = item.querySelector(".user-name")?.textContent.toLowerCase() || "";
-                item.style.display = name.includes(q) ? "flex" : "none";
-            });
-        });
-    }
+//     const searchInput = document.getElementById("sidebar-search");
+//     if (searchInput) {
+//         searchInput.addEventListener("input", function () {
+//             const q = this.value.toLowerCase();
+//             document.querySelectorAll(".user-item").forEach(item => {
+//                 const name = item.querySelector(".user-name")?.textContent.toLowerCase() || "";
+//                 item.style.display = name.includes(q) ? "flex" : "none";
+//             });
+//         });
+//     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
-    connect();
-    initializeWorkarounds();
-    scrollToBottom(false);
+//     // ── Init ──────────────────────────────────────────────────────────────────
+//     connect();
+//     initializeWorkarounds();
+//     scrollToBottom(false);
 
-})();
+// })();
