@@ -21,7 +21,9 @@
 
     // ── WebSocket Logic ─────────────────────────────────────────────────────
     // Note: window.location.host works for both local development and Render
-    const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
+    // const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
+    const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/chat/' + receiverUser + '/';
+
     let socket = null;
     let reconnectTimer = null;
     let reconnectAttempts = 0;
