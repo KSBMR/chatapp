@@ -172,6 +172,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'is_online': event['is_online'],
         }))
 
+    async def sidebar_update(self, event):
+        """
+        Called when a message is broadcast to a user's personal group.
+        Sends the sidebar update (preview text/order) to the browser.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'sidebar_update',
+            'sender': event['sender'],
+            'message': event['message'],
+        }))
+
     # ─────────────────────────────────────────────
     # Database helpers (sync → async wrappers)
     # ─────────────────────────────────────────────
