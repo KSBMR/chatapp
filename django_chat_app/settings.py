@@ -8,10 +8,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-change-this-in-production-use-env-variable'
 
-DEBUG = True
+# DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-DEBUG = False
+# DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = ['my-django-chat.onrender.com', 'localhost', '127.0.0.1']
 
 # Add this below your ALLOWED_HOSTS
