@@ -20,6 +20,7 @@
     const toastDot         = document.getElementById("toast-dot");
 
     // ── WebSocket Logic ─────────────────────────────────────────────────────
+    // Note: window.location.host works for both local development and Render
     const wsUrl = `wss://${window.location.host}/ws/chat/${receiverUser}/`;
     let socket = null;
     let reconnectTimer = null;
@@ -30,7 +31,7 @@
         socket = new WebSocket(wsUrl);
 
         socket.onopen = function () {
-            console.log("[WS] Connected");
+            console.log("[WS] Connected Successfully");
             reconnectAttempts = 0;
             showToast("connected", "Connected");
             setTimeout(hideToast, 2000);
@@ -39,51 +40,73 @@
 
         socket.onmessage = function (event) {
             const data = JSON.parse(event.data);
+            console.log("[WS] Received Data:", data); // Check browser console (F12) to debug
 
-            // 1. Handle New Chat Messages (Bubbles)
+            // 1. Handle Real-time Chat Bubbles (The current open conversation)
             if (data.type === "chat_message") {
-                appendMessage({
-                    text: data.message,
-                    sender: data.sender,
-                    timestamp: data.timestamp,
-                    isSent: data.sender === currentUser,
-                });
-                scrollToBottom();
-            } 
-            
-            // 2. Handle Real-time Sidebar Updates
-            else if (data.type === "sidebar_update") {
-                // Find the user link in the sidebar
-                const userItem = document.querySelector(`.user-item[href*="${data.sender}"]`);
-                const userList = document.querySelector(".user-list") || document.querySelector(".conversations-list");
+                // We only append to the bubble area if we are currently in that specific chat room
+                if (data.sender === receiverUser || data.sender === currentUser) {
+                    appendMessage({
+                        text: data.message,
+                        sender: data.sender,
+                        timestamp: data.timestamp,
+                        isSent: data.sender === currentUser,
+                    });
+                    scrollToBottom();
 
-                if (userItem && userList) {
-                    // Update preview text (last-message-preview or user-preview)
-                    const preview = userItem.querySelector(".user-preview") || userItem.querySelector(".last-message-preview");
-                    if (preview) {
-                        preview.textContent = (data.sender === currentUser ? "You: " : "") + data.message;
-                    }
-
-                    // Move this user to the top of the conversation list
-                    userList.prepend(userItem);
+                    // Remove the "Say hello" hint if this is the first message
+                    const hint = document.getElementById("no-messages-hint");
+                    if (hint) hint.remove();
                 }
             } 
             
-            // 3. Handle Online Status Updates
+            // 2. Handle Real-time Sidebar Updates (Messenger Style)
+            // We listen for both 'sidebar_update' and 'chat_message' to ensure the sidebar moves
+            if (data.type === "sidebar_update" || data.type === "chat_message") {
+                // Logic: If I sent the message, update the item for the person I sent it to.
+                // If I received it, update the item for the person who sent it.
+                const targetUser = (data.sender === currentUser) ? receiverUser : data.sender;
+                
+                // Select the sidebar item based on the href containing the target username
+                const userItem = document.querySelector(`.user-item[href*="/chat/${targetUser}/"]`);
+                const userList = document.querySelector(".user-list");
+
+                if (userItem && userList) {
+                    console.log("[UI] Updating sidebar item for:", targetUser);
+                    
+                    // Update the preview text in the sidebar
+                    const preview = userItem.querySelector(".user-preview");
+                    if (preview) {
+                        const prefix = (data.sender === currentUser) ? "You: " : "";
+                        preview.textContent = prefix + data.message;
+                    }
+
+                    // Move this user item to the very top of the conversation list
+                    userList.prepend(userItem);
+                    
+                    // Update the timestamp shown in the sidebar
+                    const timeLabel = userItem.querySelector(".user-time");
+                    if (timeLabel && data.timestamp) {
+                        timeLabel.textContent = data.timestamp;
+                    }
+                }
+            } 
+            
+            // 3. Handle Online/Offline Status for the current chat header
             else if (data.type === "user_status" && data.username === receiverUser) {
                 setStatus(data.is_online ? "online" : "offline");
             }
         };
 
         socket.onclose = function () {
-            console.log("[WS] Disconnected");
+            console.log("[WS] Disconnected - Attempting to reconnect...");
             showToast("disconnected", "Disconnected — reconnecting…");
             setStatus("offline");
             scheduleReconnect();
         };
 
         socket.onerror = function(err) {
-            console.error("[WS] Error: ", err);
+            console.error("[WS] Socket Error:", err);
             socket.close();
         };
     }
@@ -99,30 +122,31 @@
     function sendMessage() {
         const text = messageInput.value.trim();
         if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+        
+        // Send to consumer.py
         socket.send(JSON.stringify({ message: text }));
+        
         messageInput.value = "";
         messageInput.style.height = "auto";
         messageInput.focus();
     }
 
-    // ── Workarounds & UI Initialization ─────────────────────────────────────
-    
+    // ── UI Initialization ───────────────────────────────────────────────────
     function initializeUI() {
-        // Restore typed text after a manual reload
+        // Restore typed text if the user accidentally reloaded the page
         const savedMessage = sessionStorage.getItem('saved_message');
         if (savedMessage && messageInput) {
             messageInput.value = savedMessage;
             sessionStorage.removeItem('saved_message');
         }
 
-        // Mobile View: Toggle active chat class
+        // Mobile View: Adds 'chat-open' class to body if viewing a specific conversation
         if (window.innerWidth <= 768 && window.location.pathname.includes('/chat/')) {
             document.body.classList.add('chat-open');
         }
-        
-        // Removed PythonAnywhere auto-reload timer as Render handles sockets natively.
     }
 
+    // Save current input to memory before any refresh
     window.onbeforeunload = function() {
         if (messageInput && messageInput.value) {
             sessionStorage.setItem('saved_message', messageInput.value);
@@ -134,12 +158,14 @@
         const row = document.createElement("div");
         row.className = `message-row ${isSent ? "sent" : "received"}`;
         const color = isSent ? currentColor : receiverColor;
+        
         row.innerHTML = `
             <div class="msg-avatar" style="background:${color}">${sender.charAt(0).toUpperCase()}</div>
             <div>
                 <div class="message-bubble">${escapeHtml(text)}</div>
                 <div class="msg-time">${timestamp}</div>
             </div>`;
+            
         messagesArea.appendChild(row);
     }
 
@@ -184,11 +210,13 @@
         }
     });
 
+    // Auto-resize textarea
     messageInput.addEventListener("input", function () {
         this.style.height = "auto";
         this.style.height = Math.min(this.scrollHeight, 120) + "px";
     });
 
+    // Sidebar Search Functionality
     const searchInput = document.getElementById("sidebar-search");
     if (searchInput) {
         searchInput.addEventListener("input", function () {
@@ -200,7 +228,7 @@
         });
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // ── Initialize ────────────────────────────────────────────────────────────
     connect();
     initializeUI();
     scrollToBottom(false);
