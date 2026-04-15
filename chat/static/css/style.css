@@ -636,7 +636,7 @@ input, textarea { font-family: inherit; outline: none; border: none; }
 @media (min-width: 769px) {
   .message-input-area {
     /* Set this to your actual sidebar width */
-    left: 300px; 
+    left: 320px; 
   }
 }
 
