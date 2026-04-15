@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — Django Chat</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2310b981%22/><text y=%22.9em%22 font-size=%2280%22 x=%2210%22>💬</text></svg>">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- Sidebar (minimal version for profile page) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-top">
+        <div class="app-brand">
+          DjangoChat <span class="brand-dot"></span>
+        </div>
+        <div class="header-actions">
+          <a href="{% url 'dashboard' %}" class="icon-btn" title="Dashboard">🏠</a>
+          <a href="{% url 'logout' %}" class="icon-btn" title="Logout">🚪</a>
+        </div>
+      </div>
+    </div>
+    <div class="current-user-strip">
+      <div class="avatar" style="background: {{ profile.avatar_color }}">
+        {{ current_user.username|first|upper }}
+      </div>
+      <div class="user-info">
+        <div class="username">{{ current_user.username }}</div>
+        <div class="status">● Online</div>
+      </div>
+    </div>
+    <div style="padding: 24px 20px; color: var(--text-muted); font-size: 13px; text-align:center;">
+      <a href="{% url 'dashboard' %}" style="color:var(--accent)">← Back to chats</a>
+    </div>
+  </aside>
+
+  <!-- Profile Content -->
+  <main class="main-content profile-page">
+    <div class="profile-card">
+
+      <!-- Avatar -->
+      <div class="profile-avatar" style="background: {{ profile.avatar_color }}">
+        {{ current_user.username|first|upper }}
+      </div>
+
+      <!-- Name & Username -->
+      <div class="profile-name">
+        {{ current_user.get_full_name|default:current_user.username }}
+      </div>
+      <div class="profile-username">@{{ current_user.username }}</div>
+
+      {% if current_user.email %}
+        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">
+          {{ current_user.email }}
+        </div>
+      {% endif %}
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="stat-item">
+          <div class="stat-value">{{ current_user.sent_messages.count }}</div>
+          <div class="stat-label">Sent</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ current_user.received_messages.count }}</div>
+          <div class="stat-label">Received</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">
+            {% if profile.is_online %}🟢{% else %}⚪{% endif %}
+          </div>
+          <div class="stat-label">Status</div>
+        </div>
+      </div>
+
+      <!-- Member since -->
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">
+        Member since {{ current_user.date_joined|date:"N j, Y" }}
+      </p>
+
+      <!-- Actions -->
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <a href="{% url 'dashboard' %}" class="btn-outline">💬 Go to Chats</a>
+        <a href="{% url 'logout' %}" class="btn-outline">🚪 Sign Out</a>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+</body>
+</html>
