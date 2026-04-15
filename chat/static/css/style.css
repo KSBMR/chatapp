@@ -623,13 +623,21 @@ input, textarea { font-family: inherit; outline: none; border: none; }
 .message-input-area {
   position: fixed;
   bottom: 0;
-  left: 0;
   right: 0;
+  left: 0;
   padding: 16px 24px;
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
   flex-shrink: 0;
   z-index: 100;
+}
+
+/* Desktop View: Adjust the input area to stay out of the sidebar */
+@media (min-width: 769px) {
+  .message-input-area {
+    /* Set this to your actual sidebar width */
+    left: 300px; 
+  }
 }
 
 .input-row {
