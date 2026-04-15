@@ -618,6 +618,7 @@ input, textarea { font-family: inherit; outline: none; border: none; }
 
 /* ── Message Input ── */
 .message-input-area {
+  position: fixed;
   padding: 16px 24px;
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
